@@ -1,72 +1,61 @@
+%% ------------------------------------------------------------------------
+%% Part 1: Preparation                                                    |
+%% ------------------------------------------------------------------------
+
+%% 0. Housekeeping
 clear;
-%% 
 addpath('Figures');
-addpath('Figures/Figs');
 addpath('Functions');
-addpath('Mats');
-addpath('Mats - Consumption');
-addpath('Mats - Distributions');
-addpath('Mats - Job Value and Wage');
-addpath('Mats - Savings')
-addpath('Mats - Value Function');
-addpath('Mats - Welfare');
-addpath('Results');
 
 %% 1. Structural Parameter Settings
 
-% 1.1. Structural Parameters
-global I J daaF daaB dz lame amin amax gam aagrid zgrid;
-alf  = 0.3;     % Production Parameter          fr. Bardoczy
-bet  = 0.72;    % Worker's bargaining power     fr. Bardoczy    
-gam  = 1;       % Utility function              fr. Ben Moll Aiyagari Diffusion
-del  = 0.021;   % Depreciation Rate             fr. Ben Moll Aiyagari Diffusion
-eta  = 0.72;    % LM Tightness Elasticity       fr. Bardoczy
-phi  = 0.395;   % Flow Cost of Vacancy          fr. Bardoczy (It's \xi in Bardoczy)
-rho  = 0.01;    % Discount rate                 fr. Ben Moll Aiyagari Diffusion
-chi  = 1.7935;  % Matching Efficiency           fr. Bardoczy                
-lame = 0.1038;  % Separation Intensity          fr. Bardoczy and several other liter0ature
-hp   = 0.0001;  % Home Production
+    % 1.1. Structural Parameters
+    global I J daaF daaB dz lame amin amax gam aagrid zgrid;
+    alf  = 0.3;     % Production Parameter          fr. Bardoczy
+    bet  = 0.72;    % Worker's bargaining power     fr. Bardoczy    
+    gam  = 1;       % Utility function              fr. Ben Moll Aiyagari Diffusion
+    del  = 0.021;   % Depreciation Rate             fr. Ben Moll Aiyagari Diffusion
+    eta  = 0.72;    % LM Tightness Elasticity       fr. Bardoczy
+    phi  = 0.395;   % Flow Cost of Vacancy          fr. Bardoczy (It's \xi in Bardoczy)
+    rho  = 0.01;    % Discount rate                 fr. Ben Moll Aiyagari Diffusion
+    chi  = 1.7935;  % Matching Efficiency           fr. Bardoczy                
+    lame = 0.1038;  % Separation Intensity          fr. Bardoczy and several other liter0ature
+    hp   = 0.0001;  % Home Production
 
-% 1.2. Asset Grid
-amin = 0; 
-amax = 2500;
-I = 1500;
-J = 15;
-x = linspace(0,1,I)';
-coeff = 1.3; power = 2.8;
-xx  = x + coeff*x.^power;
-xmax = max(xx); 
-xmin = min(xx);
-agrid = (amax-amin)/(xmax - xmin)*xx + amin;
-aagrid = agrid*ones(1,J);
+    % 1.2. Asset Grid
+    amin = 0; 
+    amax = 2500;
+    I = 1500;
+    J = 15;
+    x = linspace(0,1,I)';
+    coeff = 1.3; power = 2.8;
+    xx  = x + coeff*x.^power;
+    xmax = max(xx); 
+    xmin = min(xx);
+    agrid = (amax-amin)/(xmax - xmin)*xx + amin;
+    aagrid = agrid*ones(1,J);
+    daF = ones(I,1);
+    daB = ones(I,1);
+    daF(1:I-1) = agrid(2:I)-agrid(1:I-1);
+    daB(2:I  ) = agrid(2:I)-agrid(1:I-1);
+    daF(I) = daF(I-1); 
+    daB(1) = daB(2);
+    daaF = repmat(daF,1,J);
+    daaB = repmat(daB,1,J);
 
-daF = ones(I,1);
-daB = ones(I,1);
-
-daF(1:I-1) = agrid(2:I)-agrid(1:I-1);
-daB(2:I  ) = agrid(2:I)-agrid(1:I-1);
-
-daF(I) = daF(I-1); 
-daB(1) = daB(2);
-
-daaF = repmat(daF,1,J);
-daaB = repmat(daB,1,J);
-
-% 1.3. Productivity Grid
-ze =  1; 
-zu = 0.65;
-zmin = zu; 
-zmax = ze;
-
-zgrid = linspace(zmin, zmax, J)';
-zzgrid = ones(I,1) * zgrid';
-zgridREP= repelem(zgrid,I);
-dz = (zmax - zmin)/(J-1);
-
-the  = .25;
-theu = .50;
-mue = the*(ze - zgrid);
-muu = the*(zu - zgrid);
+    % 1.3. Productivity Grid
+    ze =  1; 
+    zu = 0.65;
+    zmin = zu; 
+    zmax = ze;
+    zgrid = linspace(zmin, zmax, J)';
+    zzgrid = ones(I,1) * zgrid';
+    zgridREP= repelem(zgrid,I);
+    dz = (zmax - zmin)/(J-1);
+    the  = .25;
+    theu = .50;
+    mue = the*(ze - zgrid);
+    muu = the*(zu - zgrid);
 
 %% 2. The Transition Matrix for the Diffusion Process  
 Ce = MatrixC(mue);
@@ -75,8 +64,8 @@ C = blkdiag(sparse(Ce), sparse(Cu));
 
 %% 3. Solution Parameter Settings
 tolHJB = 1e-10;  % tolerance level for HJB equations 12?
-tolENT = 1e-5;  % tolerance level for free entry condition
-tolMKT = 1e-5;  % tolerance level for asset market clearing
+tolENT = 1e-3;  % 5 tolerance level for free entry condition
+tolMKT = 1e-3;  % 5 tolerance level for asset market clearing
 n = 300; % maximum number of iterations when solving HJB equation
 N = 1000;  % maximum number of iterations in outer loop
 Delta = 500;  % step size in HJB equation
@@ -84,63 +73,65 @@ dTheta = 1e-1;  % step size in updating theta
 relax = .999;
 kgap = 500;
 
-%% 4. Models with Payroll Taxation
-VNames = {'tau','h','maxrr','minrr','arr','ur','k','r','Theta','lamu','zemean','zumean','aa','Va','awg','ac','Vc','ace','Vce','acu','Vcu','Jf'};
-VTypes = {'double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double','double'};
-
-VONames = {'tau','AO','MO','MMO','EO','UO','MEO','MUO','Benefited','OL'};
-VOTypes = {'double','double','double','double','double','double','double','double','double','double'};
-Results = table('Size',[0,length(VNames)], 'VariableTypes',VTypes,'VariableNames',VNames);
-Omegas = table('Size', [0,length(VONames)],'VariableTypes',VOTypes,'VariableNames',VONames);
-
-Tau = [0, 0.005, 0.01, 0,015, 0.02];
+%% ------------------------------------------------------------------------
+%% Part 2: Solution                                                       | 
+%% ------------------------------------------------------------------------
+Tau = [0, 0.01, 0.02];
 
 tic;
+% (The Loop for Different Tax Rates)
 for Taxation = 1:length(Tau) % First loop
     tau = Tau(Taxation);
-    
+    % Reset
     Delta = 500;
     relax = .999;
     kgap = 500;
+    % 1. Initial Guess
 
-%   1. Initial Guess
-%      1.1. Updating Parameters
-%           1.1.1. Labor Market
-    Theta = 1; 
-    lamu = chi * (Theta ^ (1 - eta));
-    q = chi * (Theta^(-eta));
-    u = lame / (lame + lamu);
-    v = Theta * u;
-%           1.1.2. Capital Market and Prices
-    z = KFE4z(mue,muu,lamu,lame);
-    k = (((rho+del)/(z*alf))^(1/(alf-1)))*1.01;
-    r = z*alf*k^(alf-1);
-    wj = bet * ((k^alf)* zgrid' - r * k);
-    wg = repmat(wj,I,1);
-    wgVEC = wg(:);
-%       1.2. Value functions
-    We  = zeros(I,  J);
-    Wu  = zeros(I,  J);
+        % 1.1. Updating Parameters
 
-    WeF = zeros(I, J);
-    WeB = zeros(I, J);
-    WuF = zeros(I, J);
-    WuB = zeros(I, J);
+            % 1.1.1. Labor Market
+            Theta = 1; 
+            lamu = chi * (Theta ^ (1 - eta));
+            q = chi * (Theta^(-eta));
+            u = lame / (lame + lamu);
+            v = Theta * u;
 
-    Jf  = (repelem(zgrid,I) *k^alf - r*k - wgVEC) / (lame + r - del);
-%       1.3. Unemployment benefits
-    upop = (lame)/(lamu+lame);
-    [epop,upop] = (zDistribution(mue,muu,lamu,lame));
-    govrev = (tau*wj)*epop;
-    h = govrev/(sum(upop));
-    h = h*ones(I,J);
+            % 1.1.2. Capital Market and Prices
+            z = KFE4z(mue,muu,lamu,lame);
+            k = (((rho+del)/(z*alf))^(1/(alf-1)))*1.01;
+            r = z*alf*k^(alf-1);
+            wj = bet * ((k^alf)* zgrid' - r * k);
+            wg = repmat(wj,I,1);
+            wgVEC = wg(:);
 
-%   2. Solution
-    %  (The Outer Loop)
+        % 1.2. Value functions
+        We  = zeros(I,  J);
+        Wu  = zeros(I,  J);
+
+        WeF = zeros(I, J);
+        WeB = zeros(I, J);
+        WuF = zeros(I, J);
+        WuB = zeros(I, J);
+
+        Jf  = (repelem(zgrid,I) *k^alf - r*k - wgVEC) / (lame + r - del);
+        
+        % 1.3. Unemployment benefits
+        upop = (lame)/(lamu+lame);
+        [epop,upop] = (zDistribution(mue,muu,lamu,lame));
+        govrev = (tau*wj)*epop;
+        h = govrev/(sum(upop));
+        h = h*ones(I,J);
+
+% 2. Solution
+% (The Outer Loop)
     for outerloop = 1:N
-%       2.1. Solving Consumer's HJB
+
+        % 2.1. Solving Consumer's HJB
+        % (The Inner Loop)
         for innerloop = 1:n
-%           2.1.1. The Employed
+            
+            % 2.1.1. The Employed
             WeB(2:I,   :) = (We(2:I,   :)-We(1:I-1, :)) ./ (aagrid(2:I,:) - aagrid(1:I-1,:));
             WeF(1:I-1, :) = (We(2:I,   :)-We(1:I-1, :)) ./ (aagrid(2:I,:) - aagrid(1:I-1,:));
             WeB(1,:) = (wg(1,:)*(1-tau) + (r-del)*amin).^(-gam);
@@ -163,7 +154,8 @@ for Taxation = 1:length(Tau) % First loop
             ce  = IeF.*ceF + IeB.*ceB + Ie0.*ce0;
             xie = wg*(1-tau) + (r-del).*aagrid - ce;
             Ae  = MatrixA(seB,seF,IeB,IeF);
-%           2.1.2. The Unemployed
+
+            % 2.1.2. The Unemployed
             WuB(2:I,   :) = (Wu(2:I,  :)-Wu(1:I-1, :)) ./ (aagrid(2:I,:) - aagrid(1:I-1,:));
             WuF(1:I-1, :) = (Wu(2:I,  :)-Wu(1:I-1, :)) ./ (aagrid(2:I,:) - aagrid(1:I-1,:));
             WuB(1, :) = (hp + h(1,:) + (r-del)*amin).^(-gam); 
@@ -191,10 +183,12 @@ for Taxation = 1:length(Tau) % First loop
             else
                 utility = (c.^(1-gam)) / (1-gam);
             end
-%           2.1.4. Creating the new matrix Lambda
+
+            % 2.1.4. Creating the new matrix Lambda
             Lam = MatrixLam(lamu);
             A = blkdiag(sparse(Ae), sparse(Au)) + C + Lam;
-%           2.1.5. Solving the Linear Algebra
+
+            % 2.1.5. Solving the Linear Algebra
             Dn = (1/Delta + rho)*speye(I*J*2) - A;
             Waz = [We(:);Wu(:)];
             dn = utility + Waz / Delta;
@@ -212,29 +206,31 @@ for Taxation = 1:length(Tau) % First loop
             We = WeNEW; 
             Wu = WuNEW;
         end % Consumption innerloop ends 
-%       2.2. Solving Consumer's Fokker-Planck Equation    
-%           2.2.1. Setting up (fixing one value)
-        da_tilde = 0.5*(daB+daF);
-        da_tilde(1,:) = 0.5*daF(1,:);
-        da_tilde(I,:) = 0.5*daB(I,:);
-        da_stacked = repmat(da_tilde,2*J,1);
-        grid_diag = dz*spdiags(da_stacked,0,I*J*2,I*J*2);
-        M = I*J*2;
-        fix = 1;
-        AT = A';
-        null = zeros(M,1);
-        null(fix) = 1;
-        AT(fix,:) = [zeros(1,fix-1),1,zeros(1, M-fix)];
-        gVEC = AT\null;
-        gsum = gVEC' * repmat(da_tilde,2*J,1)*dz;
-        g = gVEC./ gsum;
-        ge = g(1:I*J);
-        gu = g(I*J+1:end);
-%       2.3. Solving Firm's HJB Equation
+
+        % 2.2. Solving Consumer's Fokker-Planck Equation    
+
+            % 2.2.1. Setting up (fixing one value)
+            da_tilde = 0.5*(daB+daF);
+            da_tilde(1,:) = 0.5*daF(1,:);
+            da_tilde(I,:) = 0.5*daB(I,:);
+            da_stacked = repmat(da_tilde,2*J,1);
+            grid_diag = dz*spdiags(da_stacked,0,I*J*2,I*J*2);
+            M = I*J*2;
+            fix = 1;
+            AT = A';
+            null = zeros(M,1);
+            null(fix) = 1;
+            AT(fix,:) = [zeros(1,fix-1),1,zeros(1, M-fix)];
+            gVEC = AT\null;
+            gsum = gVEC' * repmat(da_tilde,2*J,1)*dz;
+            g = gVEC./ gsum;
+            ge = g(1:I*J);
+            gu = g(I*J+1:end);
+
+        % 2.3. Solving Firm's HJB Equation
         wgVEC = wg(:);
         pi = repelem(zgrid,I)*(k^alf) - r*k - wgVEC;
         En = (1/Delta + lame + r - del)*speye(I*J) - Ae - Ce;
-
         for i = 1:n
             en = pi + Jf/Delta;
             Jfnew = En\en;
@@ -244,12 +240,11 @@ for Taxation = 1:length(Tau) % First loop
             end
             Jf = Jfnew;
         end
-%       2.5. Wage Bargaining
+
+        % 2.5. Wage Bargaining
         JfIJ = reshape(Jf,I,J);
         dW = ce.^(-gam);
-
         ue = log(ce);
-
         dJf = [diff(JfIJ,1,1)./ diff(aagrid,1,1); zeros(1,J)];
         term1 = (zzgrid*(k^alf)  - r*k + dJf.*((r-del)*aagrid - ce)) ./ (1-dJf);
         term2 = (ue + dW.* ((r-del)*aagrid - ce) - rho*Wu) ./ dW;
@@ -257,24 +252,26 @@ for Taxation = 1:length(Tau) % First loop
         Y = reshape(repelem(zgrid,I)*(k^alf) - r*k,I,J);
         wgNEW = min(wgNEW,Y);
         wgNEW = max((h+hp)/(1-tau),wgNEW);
-
         if any(wgNEW(:) < 0)
             disp('Non-positive number found in wgNEW.');
         end
-
         clear dW ue dJf term1 term2 Y;
-%       2.5. Market Clearing
-%           2.5.1. Free Entry Condition
-        VV = -phi + (lamu/Theta) * Jf' * ((gu/u) .* repmat(da_tilde,J,1)*dz); 
-%           2.5.2. Reporting the Equilibirum
-        revenu = sum(sum(tau*wg.*reshape(ge,I,J).*repmat(da_tilde,1,J)*dz));
-        expend = sum(sum(     h.*reshape(gu,I,J).*repmat(da_tilde,1,J)*dz));
-%           2.5.3. Asset Market Clearing
-%               2.5.3.1. Asset Demand
-        azazgrid = repmat(agrid,J,1);
-        aggregatesavings = azazgrid' * ((ge+gu).*repmat(da_tilde,J,1)*dz);
-        kas = aggregatesavings/(1-u);
-        kgap = k - kas;
+
+        % 2.5. Market Clearing
+
+            % 2.5.1. Free Entry Condition
+            VV = -phi + (lamu/Theta) * Jf' * ((gu/u) .* repmat(da_tilde,J,1)*dz); 
+
+            % 2.5.2. Reporting the Equilibirum
+            revenu = sum(sum(tau*wg.*reshape(ge,I,J).*repmat(da_tilde,1,J)*dz));
+            expend = sum(sum(     h.*reshape(gu,I,J).*repmat(da_tilde,1,J)*dz));
+
+            % 2.5.3. Asset Market Clearing
+                % 2.5.3.1. Asset Demand
+                azazgrid = repmat(agrid,J,1);
+                aggregatesavings = azazgrid' * ((ge+gu).*repmat(da_tilde,J,1)*dz);
+                kas = aggregatesavings/(1-u);
+                kgap = k - kas;
 
         if abs(VV) < tolENT && abs(kgap) < tolMKT
             disp(['Found the equilibrium! Theta = ', num2str(Theta), 'r = ', num2str(r)])
@@ -282,38 +279,32 @@ for Taxation = 1:length(Tau) % First loop
         else
             disp(['OL:',num2str(outerloop),'VV:',num2str(VV),'kgap:',num2str(kgap),"tau:",num2str(tau),"maxrrate:",num2str(max(max(h./wg)))])   
         end 
-%       2.7. Updating Parameters
-%           2.7.1. Labor Market
-        Theta = Theta + dTheta * VV;
-        lamu = chi * (Theta ^ (1 - eta));
-        q = chi * (Theta^(-eta));
-        u = lame / (lame + lamu);
-        v = Theta * u;
-%           2.7.2. Capital Market and Prices
-        k = relax*k +(1-relax)*kas;
-        z = KFE4z(mue,muu,lamu,lame);
-        r = z*alf*k^(alf-1);
-        wg = wgNEW; 
-        clear wgNEW;
-%           2.7.3. Unemployment Insurance 
-        govrev = sum(sum((tau*wg).*reshape(ge,I,J).*repmat(da_tilde,1,J)*dz));
-        h = govrev/(sum(sum(reshape(gu,I,J).*repmat(da_tilde,1,J)*dz)));
-        h = h*ones(I,J);
-        disp(['maxnrr:',num2str(max(max((hp+h)./wg*(1-tau))))]);
-    end
 
-    load('median_center.mat'); mc = median_center; clear median_center;
-    load('mediane.mat');
-    load('medianu.mat');
-    load('We_bm.mat')  ;
-    load('Wu_bm.mat')  ;
-    load('medast.mat') ;
-    load('Ge_bm.mat')  ;
-    load('Gu_bm.mat')  ;
+        % 2.7. Updating Parameters
+            % 2.7.1. Labor Market
+            Theta = Theta + dTheta * VV;
+            lamu = chi * (Theta ^ (1 - eta));
+            q = chi * (Theta^(-eta));
+            u = lame / (lame + lamu);
+            v = Theta * u;
+            
+            % 2.7.2. Capital Market and Prices
+            k = relax*k +(1-relax)*kas;
+            z = KFE4z(mue,muu,lamu,lame);
+            r = z*alf*k^(alf-1);
+            wg = wgNEW; 
+            clear wgNEW;
+            
+            % 2.7.3. Unemployment Insurance 
+            govrev = sum(sum((tau*wg).*reshape(ge,I,J).*repmat(da_tilde,1,J)*dz));
+            h = govrev/(sum(sum(reshape(gu,I,J).*repmat(da_tilde,1,J)*dz)));
+            h = h*ones(I,J);
+            disp(['maxnrr:',num2str(max(max((hp+h)./wg*(1-tau))))]);
+    end
 
     Ge = reshape(ge,I,J) .* repmat(da_tilde,1,J) * dz; clear ge;
     Gu = reshape(gu,I,J) .* repmat(da_tilde,1,J) * dz; clear gu;
-
+    
     avrwg = sum(sum(wg.*Ge))/(sum(sum(Ge)));
     maxnrr = max(max((h./(wg*(1-tau)))));
     minnrr = min(min((h./(wg*(1-tau)))));
@@ -332,9 +323,9 @@ for Taxation = 1:length(Tau) % First loop
     ur = lame/(lame+lamu);
     zemean = KFE4z(mue, muu, lamu, lame);
     zumean = sum(sum(zzgrid.*Gu))/(sum(sum(Gu)));
-    Results = [Results; {tau,h(100,10),maxnrr,minnrr,anrr,ur,k,r,Theta,lamu,zemean,zumean,avrast,VA,avrwg,avrcon,VC,avrcone,VCe,avrconu,VCu,EJf}];
-
+    
     taupct = num2str(round(100*tau,2));
+    
 % Plot 1: Distribution - Employed
     figure('Position', [100, 100, 800, 600]);
     surf(aagrid(1:100,:),zzgrid(1:100,:),Ge(1:100,:),'Edgealpha',.25);
@@ -345,10 +336,9 @@ for Taxation = 1:length(Tau) % First loop
     zlim([0 0.05]);
     zticks(0:0.005:0.035);
     colormap(cool);
-    filenamefig = sprintf('Figures/Figs/Surfplot - Distribution - Employed - %s.fig', taupct);
     filenamepng = sprintf('Figures/Surfplot - Distribution - Employed - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 2: Distribution - Unemployed
     figure('Position', [100, 100, 800, 600]);
     surf(aagrid(1:100,:),zzgrid(1:100,:),Gu(1:100,:),'Edgealpha',.25);
@@ -359,10 +349,9 @@ for Taxation = 1:length(Tau) % First loop
     colormap(cool);
     zlim([0 0.00075]);
     zticks(0:0.00025:0.00075);
-    filenamefig = sprintf('Figures/Figs/Surfplot - Distribution - Unemployed - %s.fig', taupct);
     filenamepng = sprintf('Figures/Surfplot - Distribution - Unemployed - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 3: Productivity Distribution
     figure('Position', [100, 100, 800, 600]);
     plot(zgrid,sum(Ge,1)/(sum(sum(Ge))),'b-', 'LineWidth', 1);
@@ -371,10 +360,9 @@ for Taxation = 1:length(Tau) % First loop
     xlabel("Productivity",'FontSize',16);
     ylabel("Density (in each group)",'FontSize',16);
     legend("Employed", "Unemployed");
-    filenamefig = sprintf('Figures/Figs/Plot - zDistribution - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - zDistribution - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 4: The Savings Difference - Productivity (15)
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),xie(1:100, 15), 'b-', 'LineWidth', 1.5);
@@ -387,10 +375,9 @@ for Taxation = 1:length(Tau) % First loop
     xlim([agrid(1), agrid(100)]);
     ylim([-2.0 2.0]);             
     yticks(-2.0:0.25:2.0);         
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Savings - 15 - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Difference in Savings - 15 - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 5: The Savings Difference - Productivity (12)
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),xie(1:100,12), 'b-', 'LineWidth', 1.5);
@@ -403,9 +390,7 @@ for Taxation = 1:length(Tau) % First loop
     xlim([agrid(1), agrid(100)]);
     ylim([-2.0 2.0]);             
     yticks(-2.0:0.25:2.0);         
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Savings - 12 - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Difference in Savings - 12 - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
 
 % Plot 6: The Savings Difference - Productivity (9)
@@ -420,10 +405,9 @@ for Taxation = 1:length(Tau) % First loop
     xlim([agrid(1), agrid(100)]);
     ylim([-2.0 2.0]);             
     yticks(-2.0:0.25:2.0);         
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Savings - 09 - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Difference in Savings - 09 - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 7: The Savings Difference - Productivity (6)
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),xie(1:100,6), 'b-', 'LineWidth', 1.5);
@@ -436,11 +420,10 @@ for Taxation = 1:length(Tau) % First loop
     xlim([agrid(1), agrid(100)]);
     ylim([-2.0 2.0]);             
     yticks(-2.0:0.25:2.0);         
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Savings - 06 - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Difference in Savings - 06 - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
-% Plot 8: The Savings Difference - Productivity (3)
+
+    % Plot 8: The Savings Difference - Productivity (3)
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),xie(1:100,3), 'b-', 'LineWidth', 1.5);
     hold on;
@@ -451,12 +434,11 @@ for Taxation = 1:length(Tau) % First loop
     legend("Employed", "Unemployed");
     xlim([agrid(1), agrid(100)]);
     ylim([-2.0 2.0]);             
-    yticks(-2.0:0.25:2.0);         
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Savings - 03 - %s.fig', taupct);
+    yticks(-2.0:0.25:2.0);
     filenamepng = sprintf('Figures/Plot - Difference in Savings - 03 - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
-% Plot 9: Job Values
+
+    % Plot 9: Job Values
     figure('Position', [100, 100, 800, 600]);
     surf(aagrid(1:100,:),zzgrid(1:100,:),JfIJ(1:100,:),'Edgealpha',.5,'FaceAlpha',.25);
     zlim([0 1.4]);   % Set z-axis limits
@@ -467,17 +449,15 @@ for Taxation = 1:length(Tau) % First loop
     zlim([0 1.4]);
     zticks(0:0.35:1.4);    
     colormap(winter);
-    filenamefig = sprintf('Figures/Figs/Plot - Job Value - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Job Value - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
-% Plot 13 Asset Distribution
+
+    % Plot 10 Asset Distribution
     adistribution = sum(Ge+Gu,2);
     cumadistribution = cumsum(adistribution);
     fq = find(cumadistribution >= 0.25, 1, 'first');
     median = find(cumadistribution >= 0.5, 1, 'first');
     tq = find(cumadistribution >= 0.75, 1, 'first');
-    
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),adistribution(1:100), 'b-', 'LineWidth', 1.25);
     hold on;
@@ -493,10 +473,9 @@ for Taxation = 1:length(Tau) % First loop
     text(agrid(median), 0.0335, sprintf('%.2f',agrid(median)),'HorizontalAlignment','center','VerticalAlignment','top','FontSize',12,'Color','k','BackgroundColor', 'w');
     text(agrid(fq), 0.0335, sprintf('%.2f',agrid(fq)),'HorizontalAlignment','center','VerticalAlignment','top','FontSize',12,'Color','#4D4D4D','BackgroundColor', 'w');
     text(agrid(tq), 0.0335, sprintf('%.2f',agrid(tq)),'HorizontalAlignment','center','VerticalAlignment','top','FontSize',12,'Color','#4D4D4D','BackgroundColor', 'w');
-    filenamefig = sprintf('Figures/Figs/Plot - Asset Distribution - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Asset Distribution - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
+
 % Plot 14 Consumption Difference
     figure('Position', [100, 100, 800, 600]);
     plot(agrid(1:100),100*((cu(1:100,15)-ce(1:100,15))./ce(1:100,15)), 'b-', 'LineWidth', 1);
@@ -509,61 +488,10 @@ for Taxation = 1:length(Tau) % First loop
     xlim([agrid(1), agrid(100)]);
     ylim([-100, 25]);
     yticks(-100:25:25);
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Consumption - %s.fig', taupct);
     filenamepng = sprintf('Figures/Plot - Difference in Consumption - %s.png', taupct);
-    savefig(filenamefig);
     exportgraphics(gca, filenamepng, 'Resolution', 300);
-Plot 14a Consumption Difference - 3D
-    figure('Position', [100, 100, 800, 600]);
-    surf(aagrid(1:100,:),zzgrid(1:100,:),100*((cu(1:100,:)-ce(1:100,:))./ce(1:100,:)));
-    xlabel("Asset",'FontSize',16);
-    ylabel("Productivity",'FontSize',16);
-    zlabel("Percent (%)");
-    xlim([agrid(1), agrid(100)]);
-    zlim([-100, 25]);
-    zticks(-100:25:25);
-    colormap("cool");
-    filenamefig = sprintf('Figures/Figs/Plot - Difference in Consumption 3D - %s.fig', taupct);
-    filenamepng = sprintf('Figures/Plot - Difference in Consumption 3D - %s.png', taupct);
-    savefig(filenamefig);
-    exportgraphics(gca, filenamepng, 'Resolution', 300);
-
-    filenamee = sprintf('Mats - Welfare/Omega_e - %s.mat', taupct);
-    save(filenamee,'Omega_e');
-    filenameu = sprintf('Mats - Welfare/Omega_u - %s.mat', taupct);
-    save(filenameu,'Omega_u');
-
-    filenamece = sprintf('Mats - Consumption/ce - %s.mat', taupct);
-    save(filenamece,'ce');
-    filenamecu = sprintf('Mats - Consumption/cu - %s.mat', taupct);
-    save(filenamecu,'cu');
-
-    filenamexie = sprintf('Mats - Savings/xie - %s.mat', taupct);
-    save(filenamexie,'xie');
-    filenamexiu = sprintf('Mats - Savings/xiu - %s.mat', taupct);
-    save(filenamexiu,'xiu');
-    
-    filenameJV = sprintf('Mats - Job Value and Wage/JV - %s.mat', taupct);
-    save(filenameJV,'JfIJ');
-    filenamewg = sprintf('Mats - Job Value and Wage/wg - %s.mat', taupct);
-    save(filenamewg,'wg');
-
-    filenameGe = sprintf('Mats - Distributions/Ge - %s.mat', taupct);
-    save(filenameGe,'Ge');
-    filenameGu = sprintf('Mats - Distributions/Gu - %s.mat', taupct);
-    save(filenameGu,'Gu');
-
-    filenamepi = sprintf('Mats - Job Value and Wage/pi - %s.mat', taupct);
-    save(filenamepi,'pi');
-
-    filenameWe = sprintf('Mats - Value Function/We - %s.mat', taupct);
-    save(filenameWe,'We');
-    filenameWu = sprintf('Mats - Value Function/Wu - %s.mat', taupct);
-    save(filenameWu,'Wu');
 end
 
-writetable(Results, 'Results/Results00.xlsx');
-writetable(Omegas,  'Results/Welfare00.xlsx');
-
 toc;
+
 
